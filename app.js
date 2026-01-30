@@ -7,7 +7,9 @@ let medicamentos = JSON.parse(localStorage.getItem("medicamentos")) || [];
 medicamentos = medicamentos.map(med => ({
   ...med,
   umbral: med.umbral ?? 5,
-  horarios: med.horarios || [],
+  horarios: (med.horarios || [])
+    .map(h => normalizeHora(h))
+    .filter(Boolean),
   historial: (med.historial || []).map(h => {
     if (typeof h === "string") {
       return { fecha: h, hora: "00:00", realHora: "00:00" };
@@ -35,6 +37,32 @@ function guardar() {
   localStorage.setItem("medicamentos", JSON.stringify(medicamentos));
 }
 
+function normalizeHora(h) {
+  if (!h) return null;
+  const raw = h.trim().toLowerCase();
+
+  // AM/PM format
+  const ampm = raw.match(/^(\d{1,2}):(\d{2})\s*([ap]m)$/i);
+  if (ampm) {
+    let hour = Number(ampm[1]);
+    const min = Number(ampm[2]);
+    const isPM = ampm[3].toLowerCase() === "pm";
+    if (hour < 1 || hour > 12 || min > 59) return null;
+    if (hour === 12) hour = 0;
+    const hh = String(isPM ? hour + 12 : hour).padStart(2, "0");
+    const mm = String(min).padStart(2, "0");
+    return `${hh}:${mm}`;
+  }
+
+  // 24h format
+  const plain = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (!plain) return null;
+  const hhNum = Number(plain[1]);
+  const mmNum = Number(plain[2]);
+  if (hhNum > 23 || mmNum > 59) return null;
+  return `${String(hhNum).padStart(2, "0")}:${String(mmNum).padStart(2, "0")}`;
+}
+
 function showAlert(message, type = "warn") {
   const box = document.getElementById("alerta");
   if (!box) {
@@ -46,7 +74,9 @@ function showAlert(message, type = "warn") {
 }
 
 function aMinutos(hhmm) {
-  const [h, m] = hhmm.split(":").map(Number);
+  const norm = normalizeHora(hhmm);
+  if (!norm) return null;
+  const [h, m] = norm.split(":").map(Number);
   return h * 60 + m;
 }
 
@@ -99,6 +129,53 @@ function renderCalendario() {
 
     contenedor.appendChild(div);
   }
+}
+
+/* =====================
+   HISTORIAL LISTADO
+===================== */
+function renderHistorialLista() {
+  const cont = document.getElementById("historialLista");
+  const selMed = document.getElementById("filtroHistMed");
+  const selMes = document.getElementById("filtroHistMes");
+  if (!cont) return;
+
+  const filtroMed = selMed ? selMed.value : "todos";
+  const filtroMes = selMes ? selMes.value : ""; // formato YYYY-MM
+
+  cont.innerHTML = "";
+
+  const meds = filtroMed === "todos"
+    ? medicamentos
+    : medicamentos.filter((_, idx) => String(idx) === filtroMed);
+
+  meds.forEach((med, idx) => {
+    const entradas = med.historial
+      .filter(h => !filtroMes || (h.fecha && h.fecha.startsWith(filtroMes)))
+      .sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora));
+
+    const titulo = document.createElement("h3");
+    titulo.textContent = med.nombre;
+    cont.appendChild(titulo);
+
+    if (!entradas.length) {
+      const vacio = document.createElement("div");
+      vacio.innerHTML = "<em>Sin registros</em>";
+      cont.appendChild(vacio);
+      return;
+    }
+
+    const ul = document.createElement("ul");
+    entradas.forEach(h => {
+      const li = document.createElement("li");
+      const detalleReal = h.realHora && h.realHora !== h.hora
+        ? ` (real ${h.realHora})`
+        : "";
+      li.textContent = `${h.fecha} ${h.hora}${detalleReal}`;
+      ul.appendChild(li);
+    });
+    cont.appendChild(ul);
+  });
 }
 
 
@@ -178,6 +255,7 @@ function consumir(index) {
   render();
   renderCalendario();
   renderFiltro();
+  renderHistorialLista();
 
 }
 
@@ -208,7 +286,7 @@ if (nuevosHorarios === null) return;
 
 med.horarios = nuevosHorarios
   .split(",")
-  .map(h => h.trim())
+  .map(h => normalizeHora(h))
   .filter(h => h);
 
   if (med.horarios.length !== Number(nuevaDosis)) {
@@ -227,6 +305,7 @@ med.horarios = nuevosHorarios
   render();
   renderCalendario();
   renderFiltro();
+  renderHistorialLista();
 
 }
 
@@ -244,6 +323,7 @@ function eliminar(index) {
   render();
   renderCalendario();
   renderFiltro();
+  renderHistorialLista();
 
 }
 
@@ -252,20 +332,31 @@ function eliminar(index) {
 ===================== */
 function renderFiltro() {
   const select = document.getElementById("filtroMedicamento");
+  const selectHist = document.getElementById("filtroHistMed");
   if (!select) return;
 
   select.innerHTML = "";
+
+  if (selectHist) selectHist.innerHTML = "";
 
   const optTodos = document.createElement("option");
   optTodos.value = "todos";
   optTodos.textContent = "Todos";
   select.appendChild(optTodos);
+  if (selectHist) selectHist.appendChild(optTodos.cloneNode(true));
 
   medicamentos.forEach((med, index) => {
     const opt = document.createElement("option");
     opt.value = index;
     opt.textContent = med.nombre;
     select.appendChild(opt);
+
+    if (selectHist) {
+      const optH = document.createElement("option");
+      optH.value = index;
+      optH.textContent = med.nombre;
+      selectHist.appendChild(optH);
+    }
   });
 }
 
@@ -284,7 +375,7 @@ form.addEventListener("submit", e => {
 
   const horarios = horariosStr
     .split(",")
-    .map(h => h.trim())
+    .map(h => normalizeHora(h))
     .filter(Boolean);
 
   if (horarios.length !== dosis) {
@@ -307,6 +398,7 @@ form.addEventListener("submit", e => {
   renderCalendario();
   form.reset();
   renderFiltro();
+  renderHistorialLista();
 
 });
 
@@ -361,6 +453,15 @@ const filtro = document.getElementById("filtroMedicamento");
 if (filtro) {
   filtro.addEventListener("change", renderCalendario);
 }
+const filtroHistMed = document.getElementById("filtroHistMed");
+const filtroHistMes = document.getElementById("filtroHistMes");
+if (filtroHistMed) {
+  filtroHistMed.addEventListener("change", renderHistorialLista);
+}
+if (filtroHistMes) {
+  filtroHistMes.addEventListener("change", renderHistorialLista);
+}
+renderHistorialLista();
 
 /* =====================
     NOTIFICACIONES

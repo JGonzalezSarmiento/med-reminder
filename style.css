@@ -20,6 +20,21 @@ li {
   border-radius: 6px;
 }
 
+.historial-filtros {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 10px 0;
+}
+
+#historialLista ul {
+  padding-left: 18px;
+}
+
+#historialLista li {
+  margin-bottom: 4px;
+}
+
 #calendario {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
