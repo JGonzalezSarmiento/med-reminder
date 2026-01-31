@@ -63,9 +63,9 @@ Limitación: para envíos 100% automáticos se necesitaría la API oficial de Wh
 
 ---
 ## 🌐 PWA y offline
-- Service Worker cachea assets principales (`index.html`, `style.css`, `app.js`, `manifest.json`).
-- Modo offline: la interfaz y los datos locales funcionan sin conexión; WhatsApp y notificaciones push externas no están disponibles sin red.
-- Al cambiar la versión, el SW limpia caches previas (cache name `med-app-v2`). Si no ves cambios, haz “Vaciar caché y recargar duro”.
+- Service Worker cachea assets principales (`index.html`, `style.css`, `app.js`, `manifest.json`, `offline.html`, íconos). Cache actual `med-app-v3`.
+- Modo offline: la interfaz y los datos locales funcionan sin conexión; WhatsApp y notificaciones externas requieren red.
+- Fallback offline: si navegas sin conexión, verás `offline.html` para rutas de navegación.
 
 ---
 ## 🔧 Desarrollo / Development
@@ -89,3 +89,4 @@ Limitación: para envíos 100% automáticos se necesitaría la API oficial de Wh
 - WhatsApp requiere interacción del usuario para enviar; la app solo prellena y abre la conversación.
 - Notificaciones locales dependen de permisos del navegador; si se niegan, no se mostrarán recordatorios.
 - Sin cuentas/usuario: cada dispositivo mantiene su propio almacenamiento local.
+- Política de privacidad: ver `privacy-policy.md`. 

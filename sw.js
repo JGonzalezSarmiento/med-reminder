@@ -1,10 +1,13 @@
-const CACHE_NAME = "med-app-v2";
+const CACHE_NAME = "med-app-v3";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./offline.html",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {
@@ -27,7 +30,18 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+
   event.respondWith(
-    caches.match(event.request).then(respuesta => respuesta || fetch(event.request))
+    caches.match(req).then(resp => {
+      if (resp) return resp;
+      return fetch(req).catch(() => {
+        if (req.mode === "navigate") {
+          return caches.match("./offline.html");
+        }
+        return Promise.reject();
+      });
+    })
   );
 });
